@@ -46,3 +46,17 @@ class TensorizedQDA(QDA):
     def _predict_one(self, x):
         # return the class that has maximum a posteriori probability
         return np.argmax(self.log_a_priori + self._predict_log_conditionals(x))
+
+class FasterQDA(TensorizedQDA):
+
+    def predict(self, X):
+        centered_X = X - self.tensor_means
+        # Una matriz n × n por clase: shape (k, n, n).
+        cross_products = centered_X.transpose(0, 2, 1) @ self.tensor_inv_cov @ centered_X
+        quadratic_terms = np.diagonal(cross_products, axis1=-2, axis2=-1)
+
+        class_scores = (
+            self.log_a_priori + 0.5 * np.log(LA.det(self.tensor_inv_cov))
+        ).reshape(-1, 1) - 0.5 * quadratic_terms
+
+        return np.argmax(class_scores, axis=0, keepdims=True)
