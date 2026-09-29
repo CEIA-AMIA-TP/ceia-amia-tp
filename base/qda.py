@@ -60,3 +60,17 @@ class FasterQDA(TensorizedQDA):
         ).reshape(-1, 1) - 0.5 * quadratic_terms
 
         return np.argmax(class_scores, axis=0, keepdims=True)
+
+class EfficientQDA(TensorizedQDA):
+    def predict(self, X):
+        centered_X = X - self.tensor_means
+
+        A = centered_X.transpose(0, 2, 1) @ self.tensor_inv_cov
+        B = centered_X
+        efficient_diagonal = np.sum(A.transpose(0, 2, 1)*B,axis=1)
+
+        class_scores = (
+            self.log_a_priori + 0.5 * np.log(LA.det(self.tensor_inv_cov))
+        ).reshape(-1, 1) - 0.5 * efficient_diagonal
+
+        return np.argmax(class_scores, axis=0, keepdims=True)
